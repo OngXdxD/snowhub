@@ -13,7 +13,10 @@ function PostDetail({ post, onClose }) {
         
         <div className="post-detail-content">
           {/* Left side - Image */}
-          <div className="post-detail-image-section">
+          <div 
+            className="post-detail-image-section"
+            style={{ '--bg-image': `url(${post.image})` }}
+          >
             <img src={post.image} alt={post.title} className="post-detail-image" />
           </div>
 

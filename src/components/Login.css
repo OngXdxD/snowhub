@@ -320,12 +320,6 @@
   background: #e0e0e0;
 }
 
-.social-login {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
 .social-button {
   display: flex;
   align-items: center;
@@ -339,6 +333,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
+  width: 100%;
 }
 
 .social-button:hover {
@@ -347,12 +342,14 @@
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
-.social-button.google {
-  color: #333;
+.social-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
-.social-button.apple {
-  color: #000;
+.social-button.google-single {
+  color: #333;
 }
 
 .auth-footer {
