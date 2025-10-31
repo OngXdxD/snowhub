@@ -1,0 +1,142 @@
+/* Import base styles from Login.css */
+@import './Login.css';
+
+/* Additional styles specific to Signup */
+.signup-content {
+  max-width: 1200px;
+}
+
+.showcase-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 40px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.stat-number {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.terms-group {
+  margin-top: 5px;
+}
+
+.terms-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.terms-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.terms-checkbox a {
+  color: #1976d2;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.terms-checkbox a:hover {
+  color: #1565c0;
+  text-decoration: underline;
+}
+
+/* Adjust form spacing for signup */
+.auth-form {
+  gap: 18px;
+}
+
+/* Password strength indicator */
+.password-strength {
+  display: flex;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.strength-bar {
+  height: 4px;
+  flex: 1;
+  background: #e0e0e0;
+  border-radius: 2px;
+  transition: background 0.3s ease;
+}
+
+.strength-bar.active {
+  background: #42a5f5;
+}
+
+.strength-bar.weak {
+  background: #ff4444;
+}
+
+.strength-bar.medium {
+  background: #ffaa00;
+}
+
+.strength-bar.strong {
+  background: #4caf50;
+}
+
+/* Responsive adjustments */
+@media (max-width: 968px) {
+  .showcase-stats {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+  }
+
+  .stat-number {
+    font-size: 24px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .showcase-stats {
+    gap: 10px;
+  }
+
+  .stat-item {
+    padding: 15px 10px;
+  }
+
+  .stat-number {
+    font-size: 20px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+  .terms-checkbox {
+    font-size: 13px;
+  }
+}
+

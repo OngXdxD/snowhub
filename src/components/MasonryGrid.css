@@ -1,0 +1,31 @@
+.masonry-container {
+  padding: 80px 24px 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.masonry-grid {
+  display: flex;
+  margin-left: -16px;
+  width: auto;
+}
+
+.masonry-grid-column {
+  padding-left: 16px;
+  background-clip: padding-box;
+}
+
+@media (max-width: 768px) {
+  .masonry-container {
+    padding: 70px 12px 12px;
+  }
+
+  .masonry-grid {
+    margin-left: -12px;
+  }
+
+  .masonry-grid-column {
+    padding-left: 12px;
+  }
+}
+
