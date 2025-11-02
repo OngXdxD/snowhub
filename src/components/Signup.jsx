@@ -93,19 +93,42 @@ function Signup() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSocialAuthSuccess = (result) => {
-    // Store auth data
-    localStorage.setItem('authToken', result.token);
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userEmail', result.user.email || '');
-    localStorage.setItem('username', result.user.username || 'User');
-    localStorage.setItem('userId', result.user.id || '');
-    
-    // Show success toast
-    showToast(`Welcome to SnowHub! Signed up with ${result.user.provider} 🎿`, 'success');
-    
-    // Navigate to home
-    setTimeout(() => navigate('/'), 500);
+  const handleSocialAuthSuccess = async (result) => {
+    try {
+      // Send Google auth data to backend to create/authenticate user
+      const response = await authAPI.socialAuth({
+        provider: result.user.provider,
+        providerId: result.user.id,
+        email: result.user.email,
+        username: result.user.username,
+        avatar: result.user.avatar,
+        firebaseToken: result.token
+      });
+
+      // Store backend JWT token and user data
+      const backendToken = response.token || response.accessToken || response.data?.token;
+      const userData = response.user || response.data?.user || response;
+
+      if (backendToken) {
+        localStorage.setItem('authToken', backendToken);
+        localStorage.setItem('isAuthenticated', 'true');
+      }
+
+      if (userData) {
+        localStorage.setItem('userEmail', userData.email || result.user.email);
+        localStorage.setItem('username', userData.username || result.user.username);
+        localStorage.setItem('userId', userData.id || userData._id || result.user.id);
+      }
+
+      // Show success toast
+      showToast(`Welcome to SnowHub! Signed up with ${result.user.provider} 🎿`, 'success');
+
+      // Navigate to home
+      setTimeout(() => navigate('/'), 500);
+    } catch (error) {
+      console.error('Social auth backend error:', error);
+      showToast(error.message || 'Failed to authenticate with backend', 'error');
+    }
   };
 
   const handleGoogleSignIn = async () => {
@@ -122,7 +145,7 @@ function Signup() {
     
     try {
       const result = await signInWithGoogle();
-      handleSocialAuthSuccess(result);
+      await handleSocialAuthSuccess(result);
     } catch (error) {
       console.error('Google sign-in error:', error);
       showToast(error.message || 'Failed to sign up with Google', 'error');

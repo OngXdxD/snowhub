@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Heart, MessageCircle, Bookmark, Share2 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import { getR2FileUrl } from '../utils/r2Upload';
 import './PostCard.css';
 
 function PostCard({ post, onClick }) {
@@ -58,10 +59,13 @@ function PostCard({ post, onClick }) {
     }
   };
 
+  // Get the full URL for the image from R2 or use the original URL
+  const imageUrl = post.image ? getR2FileUrl(post.image) : post.image;
+
   return (
     <div className="post-card" onClick={onClick}>
       <div className="post-image-container">
-        <img src={post.image} alt={post.title} className="post-image" />
+        <img src={imageUrl || post.image} alt={post.title} className="post-image" />
         {post.tag && <span className="post-tag">{post.tag}</span>}
       </div>
       <div className="post-content">

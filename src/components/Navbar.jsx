@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, PlusSquare, MessageCircle, User, Mountain, LogOut, Heart } from 'lucide-react';
+import { Search, PlusSquare, MessageCircle, User, Snowflake, LogOut, Heart } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import './Navbar.css';
 
@@ -52,8 +52,18 @@ function Navbar() {
       );
     } else {
       // Perform the action
-      console.log(`Performing action: ${action}`);
-      // TODO: Implement actual functionality
+      switch(action) {
+        case 'create-post':
+          navigate('/create');
+          break;
+        case 'favorites':
+        case 'messages':
+          console.log(`Performing action: ${action}`);
+          // TODO: Implement actual functionality
+          break;
+        default:
+          break;
+      }
     }
   };
 
@@ -62,7 +72,7 @@ function Navbar() {
       <div className="navbar-container">
         {/* Logo - Left */}
         <div className="navbar-logo" onClick={() => navigate('/')}>
-          <Mountain className="logo-icon" size={28} />
+          <Snowflake className="logo-icon" size={28} />
           <span className="logo-text">SnowHub</span>
         </div>
 
@@ -117,6 +127,16 @@ function Navbar() {
                       <User size={20} />
                       <span>{username}</span>
                     </div>
+                    <button 
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        navigate('/profile');
+                      }} 
+                      className="profile-link-btn"
+                    >
+                      <User size={18} />
+                      <span>View Profile</span>
+                    </button>
                     <button onClick={handleLogout} className="logout-btn">
                       <LogOut size={18} />
                       <span>Logout</span>

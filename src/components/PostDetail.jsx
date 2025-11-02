@@ -1,8 +1,12 @@
 import { X, Heart, MessageCircle, Bookmark, Share2, MapPin } from 'lucide-react';
+import { getR2FileUrl } from '../utils/r2Upload';
 import './PostDetail.css';
 
 function PostDetail({ post, onClose }) {
   if (!post) return null;
+
+  // Get the full URL for the image from R2 or use the original URL
+  const imageUrl = post.image ? getR2FileUrl(post.image) : post.image;
 
   return (
     <div className="post-detail-overlay" onClick={onClose}>
@@ -15,9 +19,9 @@ function PostDetail({ post, onClose }) {
           {/* Left side - Image */}
           <div 
             className="post-detail-image-section"
-            style={{ '--bg-image': `url(${post.image})` }}
+            style={{ '--bg-image': `url(${imageUrl})` }}
           >
-            <img src={post.image} alt={post.title} className="post-detail-image" />
+            <img src={imageUrl} alt={post.title} className="post-detail-image" />
           </div>
 
           {/* Right side - Content */}

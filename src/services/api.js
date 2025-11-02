@@ -58,6 +58,16 @@ export const authAPI = {
     return handleResponse(response);
   },
 
+  // POST /social-auth - Social authentication (Google, Apple, etc.)
+  socialAuth: async (socialData) => {
+    const response = await fetch(`${API_BASE_URL}/api/auth/social-auth`, {
+      method: 'POST',
+      headers: createHeaders(),
+      body: JSON.stringify(socialData),
+    });
+    return handleResponse(response);
+  },
+
   // GET /me - Get current user profile (protected)
   getProfile: async () => {
     const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
@@ -104,6 +114,7 @@ export const postsAPI = {
   },
 
   // POST / - Create post with image (protected)
+  // Note: postData should contain 'image' field with the R2 filename (string), not a File object
   create: async (postData) => {
     const isFormData = postData instanceof FormData;
     const response = await fetch(`${API_BASE_URL}/api/posts`, {
@@ -169,10 +180,12 @@ export const postsAPI = {
 
 export const usersAPI = {
   // GET /:id - Get user profile & stats
+  // Includes auth header if available to get isFollowing status
   getProfile: async (userId) => {
+    const hasAuth = !!getAuthToken();
     const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
       method: 'GET',
-      headers: createHeaders(),
+      headers: createHeaders(hasAuth),
     });
     return handleResponse(response);
   },

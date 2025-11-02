@@ -43,6 +43,7 @@
 
 .post-content {
   padding: 12px;
+  min-width: 0; /* Allow flexbox children to shrink */
 }
 
 .post-title {
@@ -60,14 +61,15 @@
 
 .post-footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .post-author {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0; /* Allow text to wrap */
 }
 
 .author-avatar {
@@ -75,12 +77,16 @@
   height: 24px;
   border-radius: 50%;
   object-fit: cover;
+  flex-shrink: 0; /* Prevent avatar from shrinking */
 }
 
 .author-name {
   font-size: 12px;
   color: #666;
   font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .post-stats {
@@ -104,22 +110,27 @@
 /* Post Actions */
 .post-actions {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
 }
 
 .action-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px;
+  min-width: 36px;
   background: transparent;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   color: #666;
-  font-size: 12px;
+  font-size: 11px;
   transition: all 0.2s;
+  flex-shrink: 0; /* Prevent buttons from shrinking */
 }
 
 .action-btn:hover {

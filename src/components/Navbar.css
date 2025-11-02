@@ -157,6 +157,7 @@
   font-size: 14px;
 }
 
+.profile-link-btn,
 .logout-btn {
   display: flex;
   align-items: center;
@@ -170,6 +171,11 @@
   font-size: 14px;
   transition: all 0.2s;
   text-align: left;
+}
+
+.profile-link-btn:hover {
+  background: #f8f8f8;
+  color: #1976d2;
 }
 
 .logout-btn:hover {
