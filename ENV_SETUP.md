@@ -19,6 +19,12 @@ VITE_FIREBASE_PROJECT_ID=your-project-id
 VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
+
+# Google Maps (for location picker)
+VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+
+# DeepSeek AI (for content generation)
+VITE_DEEPSEEK_API_KEY=your_deepseek_api_key
 ```
 
 ## Variable Descriptions
@@ -44,6 +50,16 @@ Used for Google OAuth authentication. Get these from Firebase Console:
 - **VITE_FIREBASE_STORAGE_BUCKET**: Firebase storage bucket
 - **VITE_FIREBASE_MESSAGING_SENDER_ID**: Firebase messaging sender ID
 - **VITE_FIREBASE_APP_ID**: Firebase app ID
+
+### Google Maps Configuration
+Used for location picker with autocomplete. Get your API key from Google Cloud Console:
+- **VITE_GOOGLE_MAPS_API_KEY**: Google Maps API key with Places API enabled
+- Get free quota: https://console.cloud.google.com/google/maps-apis
+
+### DeepSeek AI Configuration
+Used for AI-powered content generation. Get your API key from DeepSeek:
+- **VITE_DEEPSEEK_API_KEY**: DeepSeek API key
+- Get your key: https://platform.deepseek.com
 
 ## Setup Steps
 
