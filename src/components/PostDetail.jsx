@@ -1,21 +1,22 @@
 import { X, Heart, MessageCircle, Bookmark, Share2, MapPin } from 'lucide-react';
 import { getR2FileUrl } from '../utils/r2Upload';
-import './PostDetail.css';
+import '../css/PostDetail.css';
 
-function PostDetail({ post, onClose }) {
+function PostDetail({ post, onClose, variant = 'modal' }) {
   if (!post) return null;
 
   // Get the full URL for the image from R2 or use the original URL
   const imageUrl = post.image ? getR2FileUrl(post.image) : post.image;
 
-  return (
-    <div className="post-detail-overlay" onClick={onClose}>
-      <div className="post-detail-container" onClick={(e) => e.stopPropagation()}>
-        <button className="close-btn" onClick={onClose}>
+  const container = (
+    <div className="post-detail-container" onClick={(e) => e.stopPropagation()}>
+      {onClose && (
+        <button className="close-btn" onClick={(e) => { e.stopPropagation(); onClose(); }}>
           <X size={24} />
         </button>
-        
-        <div className="post-detail-content">
+      )}
+
+      <div className="post-detail-content">
           {/* Left side - Image */}
           <div 
             className="post-detail-image-section"
@@ -107,6 +108,25 @@ function PostDetail({ post, onClose }) {
           </div>
         </div>
       </div>
+  );
+
+  if (variant === 'page') {
+    return (
+      <div className="post-detail-page">
+        {container}
+      </div>
+    );
+  }
+
+  const handleOverlayClick = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  return (
+    <div className="post-detail-overlay" onClick={handleOverlayClick}>
+      {container}
     </div>
   );
 }

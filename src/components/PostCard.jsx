@@ -2,41 +2,88 @@ import { useState } from 'react';
 import { Heart, MessageCircle, Bookmark, Share2 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { getR2FileUrl } from '../utils/r2Upload';
-import './PostCard.css';
+import { postsAPI } from '../services/api';
+import '../css/PostCard.css';
 
 function PostCard({ post, onClick }) {
   const { showToast } = useToast();
-  const [liked, setLiked] = useState(false);
-  const [bookmarked, setBookmarked] = useState(false);
+  const initialLikeCount = typeof post.likeCount === 'number'
+    ? post.likeCount
+    : typeof post.likes === 'number'
+      ? post.likes
+      : 0;
+  const [liked, setLiked] = useState(Boolean(post.isLiked));
+  const [likeCount, setLikeCount] = useState(initialLikeCount);
+  const [bookmarked, setBookmarked] = useState(Boolean(post.isBookmarked));
+  const [likeLoading, setLikeLoading] = useState(false);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
   
   const isAuthenticated = () => {
     return !!localStorage.getItem('authToken');
   };
 
-  const handleProtectedAction = (e, message, callback) => {
-    e.stopPropagation(); // Prevent card click
-    
-    if (!isAuthenticated()) {
-      showToast(message, 'warning');
-    } else {
-      callback();
+  const ensureAuthenticated = (e, actionDescription) => {
+    e.stopPropagation();
+    if (isAuthenticated()) {
+      return true;
+    }
+    const message = actionDescription
+      ? `Please log in or sign up to ${actionDescription}.`
+      : 'Please log in or sign up to continue.';
+    showToast(message, 'warning');
+    return false;
+  };
+
+  const handleLike = async (e) => {
+    if (!ensureAuthenticated(e, 'like posts') || likeLoading) {
+      return;
+    }
+
+    setLikeLoading(true);
+    try {
+      const response = await postsAPI.toggleLike(post.id);
+      const payload = response?.data ?? response;
+      const nextLiked = Boolean(payload?.liked ?? !liked);
+      setLiked(nextLiked);
+      if (typeof payload?.likesCount === 'number') {
+        setLikeCount(payload.likesCount);
+      } else if (typeof payload?.likeCount === 'number') {
+        setLikeCount(payload.likeCount);
+      } else {
+        setLikeCount((prev) => Math.max(prev + (nextLiked ? 1 : -1), 0));
+      }
+      showToast(nextLiked ? 'Post liked!' : 'Like removed.', 'success');
+    } catch (error) {
+      console.error('Like post failed:', error);
+      showToast('Unable to update like. Please try again.', 'error');
+    } finally {
+      setLikeLoading(false);
     }
   };
 
-  const handleLike = (e) => {
-    handleProtectedAction(e, 'Please login to like this post', () => {
-      setLiked(!liked);
-      // TODO: Call API to like post
-      console.log('Liked post:', post.id);
-    });
-  };
+  const handleBookmark = async (e) => {
+    if (!ensureAuthenticated(e, 'save posts') || bookmarkLoading) {
+      return;
+    }
 
-  const handleBookmark = (e) => {
-    handleProtectedAction(e, 'Please login to bookmark this post', () => {
-      setBookmarked(!bookmarked);
-      // TODO: Call API to bookmark post
-      console.log('Bookmarked post:', post.id);
-    });
+    setBookmarkLoading(true);
+    try {
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        showToast('Please log in or sign up to save posts.', 'warning');
+        return;
+      }
+      const response = await postsAPI.toggleBookmark(userId, post.id);
+      const payload = response?.data ?? response;
+      const nextBookmarked = Boolean(payload?.bookmarked ?? !bookmarked);
+      setBookmarked(nextBookmarked);
+      showToast(nextBookmarked ? 'Post saved!' : 'Bookmark removed.', 'success');
+    } catch (error) {
+      console.error('Bookmark post failed:', error);
+      showToast('Unable to update bookmark. Please try again.', 'error');
+    } finally {
+      setBookmarkLoading(false);
+    }
   };
 
   const handleShare = (e) => {
@@ -50,17 +97,18 @@ function PostCard({ post, onClick }) {
     });
   };
 
-  const handleComment = (e) => {
-    e.stopPropagation();
-    if (!isAuthenticated()) {
-      showToast('Please login to comment on this post', 'warning');
-    } else {
-      onClick(); // Open post detail
+  const handleComment = async (e) => {
+    if (!ensureAuthenticated(e, 'comment on posts')) {
+      return;
     }
+    onClick();
   };
 
   // Get the full URL for the image from R2 or use the original URL
   const imageUrl = post.image ? getR2FileUrl(post.image) : post.image;
+  const displayedLikeCount = initialLikeCount === 0 && typeof post.likes === 'string'
+    ? post.likes
+    : likeCount;
 
   return (
     <div className="post-card" onClick={onClick}>
@@ -80,9 +128,10 @@ function PostCard({ post, onClick }) {
               className={`action-btn ${liked ? 'liked' : ''}`}
               onClick={handleLike}
               title={isAuthenticated() ? 'Like' : 'Login to like'}
+              disabled={likeLoading}
             >
               <Heart size={16} fill={liked ? 'currentColor' : 'none'} />
-              <span>{post.likes}</span>
+              <span>{displayedLikeCount}</span>
             </button>
             <button 
               className="action-btn"
@@ -95,6 +144,7 @@ function PostCard({ post, onClick }) {
               className={`action-btn ${bookmarked ? 'bookmarked' : ''}`}
               onClick={handleBookmark}
               title={isAuthenticated() ? 'Bookmark' : 'Login to bookmark'}
+              disabled={bookmarkLoading}
             >
               <Bookmark size={16} fill={bookmarked ? 'currentColor' : 'none'} />
             </button>

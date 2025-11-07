@@ -5,7 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { usersAPI } from '../services/api';
 import { getR2FileUrl } from '../utils/r2Upload';
 import Navbar from './Navbar';
-import './UserProfile.css';
+import '../css/UserProfile.css';
 
 function UserProfile() {
   const { userId } = useParams();

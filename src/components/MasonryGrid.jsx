@@ -1,6 +1,6 @@
 import Masonry from 'react-masonry-css';
 import PostCard from './PostCard';
-import './MasonryGrid.css';
+import '../css/MasonryGrid.css';
 
 function MasonryGrid({ posts, onPostClick }) {
   const breakpointColumns = {

@@ -4,7 +4,7 @@ import { Eye, EyeOff, Snowflake } from 'lucide-react';
 import { authAPI } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
 import { signInWithGoogle, handleRedirectResult } from '../services/socialAuth';
-import './Login.css';
+import '../css/Login.css';
 
 function Login() {
   const navigate = useNavigate();

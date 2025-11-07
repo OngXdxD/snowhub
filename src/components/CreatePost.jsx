@@ -2,22 +2,27 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Upload, MapPin, Tag, Image as ImageIcon, Snowflake, Sparkles, Loader } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
-import { postsAPI } from '../services/api';
+import { postsAPI, categoriesAPI } from '../services/api';
 import { uploadFileToR2, validateFileType } from '../utils/r2Upload';
 import Navbar from './Navbar';
-import './CreatePost.css';
+import '../css/CreatePost.css';
 
 function CreatePost() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const fileInputRef = useRef(null);
-  const placePickerRef = useRef(null);
-  const [isGoogleLoaded, setIsGoogleLoaded] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const skipNextLocationFetchRef = useRef(false);
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [categoryInput, setCategoryInput] = useState('');
 
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    tag: '',
+    categories: [],
     location: ''
   });
 
@@ -29,64 +34,135 @@ function CreatePost() {
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiInput, setAiInput] = useState('');
 
-  // Load Google Maps Extended Components
+  const normalizeCategoryName = (value) => {
+    return value
+      .trim()
+      .replace(/\s+/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
+  const isCategoryEqual = (a, b) => a.toLowerCase() === b.toLowerCase();
+
+  const ensureCategoryInList = (list, categoryName) => {
+    if (!categoryName) return list;
+    return list.some(cat => isCategoryEqual(cat, categoryName))
+      ? list
+      : [...list, categoryName];
+  };
+
+  // Load categories from backend
   useEffect(() => {
-    const loadGoogleMaps = async () => {
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      
-      // If no API key, don't load Google Maps
-      if (!apiKey) {
-        console.warn('Google Maps API key not configured. Location autocomplete disabled.');
-        setIsGoogleLoaded(false);
-        return;
+    const loadCategories = async () => {
+      setIsLoadingCategories(true);
+      try {
+        const data = await categoriesAPI.getAll();
+        const categoryItems = Array.isArray(data?.categories) ? data.categories : data;
+        const names = (categoryItems || []).map(item => normalizeCategoryName(item.name || item));
+        const uniqueNames = [...new Set(names)];
+        uniqueNames.sort((a, b) => a.localeCompare(b));
+        setAvailableCategories(uniqueNames);
+      } catch (error) {
+        console.error('Failed to load categories:', error);
+        showToast('Unable to load categories. You can still add your own.', 'warning');
+      } finally {
+        setIsLoadingCategories(false);
       }
-
-      // Check if already loaded
-      if (window.google && window.customElements && customElements.get('gmpx-place-picker')) {
-        setIsGoogleLoaded(true);
-        return;
-      }
-
-      // Load the Extended Components library
-      const script = document.createElement('script');
-      script.type = 'module';
-      script.src = 'https://ajax.googleapis.com/ajax/libs/@googlemaps/extended-component-library/0.6.11/index.min.js';
-      script.onload = () => {
-        // Wait for custom elements to be defined
-        customElements.whenDefined('gmpx-place-picker').then(() => {
-          setIsGoogleLoaded(true);
-        });
-      };
-      script.onerror = () => {
-        console.warn('Google Maps Extended Components failed to load');
-        setIsGoogleLoaded(false);
-      };
-      document.head.appendChild(script);
     };
 
-    loadGoogleMaps();
-  }, []);
+    loadCategories();
+  }, [showToast]);
 
-  // Initialize Place Picker
-  useEffect(() => {
-    if (isGoogleLoaded && placePickerRef.current) {
-      const placePicker = placePickerRef.current;
-      
-      const handlePlaceChange = (event) => {
-        const place = event.detail || event.target.value;
-        const locationText = place?.formattedAddress || place?.formatted_address || '';
-        if (locationText) {
-          setFormData(prev => ({ ...prev, location: locationText }));
-        }
-      };
-
-      placePicker.addEventListener('gmpx-placechange', handlePlaceChange);
-      
-      return () => {
-        placePicker.removeEventListener('gmpx-placechange', handlePlaceChange);
-      };
+  // Fetch location suggestions from Google Places API
+  const fetchLocationSuggestions = async (input) => {
+    if (!input || input.length < 2) {
+      setLocationSuggestions([]);
+      setShowLocationDropdown(false);
+      return;
     }
-  }, [isGoogleLoaded]);
+
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    
+    if (!apiKey) {
+      console.warn('Google Maps API key not configured');
+      return;
+    }
+
+    setIsLoadingLocations(true);
+
+    try {
+      const response = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': apiKey
+        },
+        body: JSON.stringify({
+          input: input,
+          // Optional: Add location bias for better results
+          // locationBias: {
+          //   circle: {
+          //     center: {
+          //       latitude: 37.7937,
+          //       longitude: -122.3965
+          //     },
+          //     radius: 500.0
+          //   }
+          // }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch location suggestions');
+      }
+
+      const data = await response.json();
+      console.log('📍 Location suggestions:', data);
+      
+      if (data.suggestions && data.suggestions.length > 0) {
+        setLocationSuggestions(data.suggestions);
+        setShowLocationDropdown(true);
+      } else {
+        setLocationSuggestions([]);
+        setShowLocationDropdown(false);
+      }
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      setLocationSuggestions([]);
+      setShowLocationDropdown(false);
+    } finally {
+      setIsLoadingLocations(false);
+    }
+  };
+
+  // Debounce location input
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (skipNextLocationFetchRef.current) {
+        skipNextLocationFetchRef.current = false;
+        return;
+      }
+
+      fetchLocationSuggestions(formData.location);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [formData.location]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.location-autocomplete-wrapper')) {
+        setShowLocationDropdown(false);
+      }
+    };
+
+    if (showLocationDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showLocationDropdown]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -97,6 +173,100 @@ function CreatePost() {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
+  };
+
+  const addCategoryToSelection = (categoryName) => {
+    const normalized = normalizeCategoryName(categoryName);
+    if (!normalized) return;
+
+    setAvailableCategories(prev => ensureCategoryInList(prev, normalized).sort((a, b) => a.localeCompare(b)));
+
+    setFormData(prev => {
+      if (prev.categories.some(cat => isCategoryEqual(cat, normalized))) {
+        return prev;
+      }
+      return {
+        ...prev,
+        categories: [...prev.categories, normalized]
+      };
+    });
+  };
+
+  const removeCategoryFromSelection = (categoryName) => {
+    setFormData(prev => ({
+      ...prev,
+      categories: prev.categories.filter(cat => !isCategoryEqual(cat, categoryName))
+    }));
+  };
+
+  const handleCategoryToggle = (categoryName) => {
+    const normalized = normalizeCategoryName(categoryName);
+    if (!normalized) return;
+
+    setAvailableCategories(prev => ensureCategoryInList(prev, normalized).sort((a, b) => a.localeCompare(b)));
+
+    setFormData(prev => {
+      const isSelected = prev.categories.some(cat => isCategoryEqual(cat, normalized));
+      return {
+        ...prev,
+        categories: isSelected
+          ? prev.categories.filter(cat => !isCategoryEqual(cat, normalized))
+          : [...prev.categories, normalized]
+      };
+    });
+  };
+
+  const handleCategoryInputChange = (e) => {
+    setCategoryInput(e.target.value);
+  };
+
+  const persistCategoryIfNeeded = async (categoryName) => {
+    const normalized = normalizeCategoryName(categoryName);
+    if (!normalized) return normalized;
+
+    if (!availableCategories.some(cat => isCategoryEqual(cat, normalized))) {
+      try {
+        const created = await categoriesAPI.create({ name: normalized });
+        const createdName = normalizeCategoryName(created?.name || normalized);
+        setAvailableCategories(prev => ensureCategoryInList(prev, createdName).sort((a, b) => a.localeCompare(b)));
+        return createdName;
+      } catch (error) {
+        console.error('Failed to create category:', error);
+        showToast('Category saved locally. It will be synced later.', 'info');
+        setAvailableCategories(prev => ensureCategoryInList(prev, normalized).sort((a, b) => a.localeCompare(b)));
+        return normalized;
+      }
+    }
+
+    return normalized;
+  };
+
+  const handleAddCategory = async () => {
+    const normalized = normalizeCategoryName(categoryInput);
+    if (!normalized) return;
+
+    const finalName = await persistCategoryIfNeeded(normalized);
+    addCategoryToSelection(finalName);
+    setCategoryInput('');
+  };
+
+  const handleCategoryInputKeyDown = async (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      await handleAddCategory();
+    }
+  };
+
+  const handleLocationSelect = (suggestion) => {
+    // Extract the main text from the suggestion
+    const locationText = suggestion.placePrediction?.text?.text || 
+                        suggestion.placePrediction?.structuredFormat?.mainText?.text || 
+                        '';
+    
+    skipNextLocationFetchRef.current = true;
+    setFormData(prev => ({ ...prev, location: locationText }));
+    setShowLocationDropdown(false);
+    setLocationSuggestions([]);
   };
 
   const handleImageClick = () => {
@@ -153,6 +323,13 @@ function CreatePost() {
     setIsAIGenerating(true);
     
     try {
+      const existingContext = {
+        currentTitle: formData.title,
+        currentDescription: formData.content,
+        currentCategories: formData.categories,
+        currentLocation: formData.location
+      };
+
       const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -163,28 +340,40 @@ function CreatePost() {
           model: 'deepseek-chat',
           messages: [
             {
+              role: 'system',
+              content: [
+                'You are an award-winning winter sports storyteller and social media strategist.',
+                'Write energetic, authentic copy that appeals to skiers, snowboarders, and mountain lovers.',
+                'Keep descriptions vivid, with 2-3 short paragraphs, sensory details, and a clear call-to-action or takeaway.',
+                'Limit emojis to at most 3 total and only when they add excitement.',
+                'Ensure the suggested tag is one clear keyword (Title Case).',
+                'Tailor the location suggestion to match the story vibe and be a real, recognizable destination.'
+              ].join(' ')
+            },
+            {
               role: 'user',
-              content: `Based on the following information about a winter sports post, generate engaging social media content:
-
-User's input: "${aiInput}"
-
-Generate:
-1. A catchy title (emojis welcome)
-2. A detailed description (100-300 words)
-3. A relevant tag (one word like: Skiing, Snowboarding, Powder, Backcountry, Resort, Gear Review, Tips & Tricks, Adventure, Climbing, Tutorial, Lifestyle, Racing, Safety)
-4. A location suggestion
-
-Return ONLY a JSON object in this exact format:
-{
-  "title": "...",
-  "description": "...",
-  "tag": "...",
-  "location": "..."
-}`
+              content: [
+                'User brief about their winter sports post:',
+                aiInput,
+                '',
+                'Current draft values (use only if they strengthen the result):',
+                JSON.stringify(existingContext, null, 2),
+                '',
+                'Please return polished copy following this exact JSON schema:',
+                '{',
+              '  "title": "Short punchy title with up to 2 emojis",',
+              '  "description": "Two or three paragraphs (100-220 words) of engaging storytelling",',
+              '  "categories": ["Up to three values chosen from: Skiing, Snowboarding, Powder, Backcountry, Resort, Gear Review, Tips & Tricks, Adventure, Climbing, Tutorial, Lifestyle, Racing, Safety"],',
+                '  "location": "Concise destination recommendation"',
+                '}',
+                '',
+                'Do not include extra commentary—only output valid JSON.'
+              ].join('\n')
             }
           ],
-          max_tokens: 800,
-          temperature: 0.7
+          max_tokens: 900,
+          temperature: 1.5,
+          top_p: 0.9
         })
       });
 
@@ -202,13 +391,34 @@ Return ONLY a JSON object in this exact format:
       if (jsonMatch) {
         const aiData = JSON.parse(jsonMatch[0]);
         
+        const aiCategories = Array.isArray(aiData.categories)
+          ? aiData.categories.map(normalizeCategoryName).filter(Boolean)
+          : aiData.categories
+            ? [normalizeCategoryName(aiData.categories)].filter(Boolean)
+            : aiData.tag
+              ? [normalizeCategoryName(aiData.tag)].filter(Boolean)
+              : [];
+
         setFormData(prev => ({
           ...prev,
           title: aiData.title || prev.title,
           content: aiData.description || prev.content,
-          tag: aiData.tag || prev.tag,
+          categories: aiCategories.length ? aiCategories : prev.categories,
           location: aiData.location || prev.location
         }));
+
+        if (aiCategories.length) {
+          setAvailableCategories(prev => {
+            const combined = [...prev];
+            aiCategories.forEach(category => {
+              if (!combined.some(existing => isCategoryEqual(existing, category))) {
+                combined.push(category);
+              }
+            });
+            combined.sort((a, b) => a.localeCompare(b));
+            return combined;
+          });
+        }
         
         showToast('AI content generated! ✨', 'success');
         closeAIModal();
@@ -271,7 +481,7 @@ Return ONLY a JSON object in this exact format:
       const postPayload = {
         title: formData.title,
         content: formData.content,
-        tag: formData.tag,
+        categories: formData.categories,
         location: formData.location,
         image: uploadedFilename,
       };
@@ -301,17 +511,6 @@ Return ONLY a JSON object in this exact format:
       navigate('/');
     }
   };
-
-  const popularTags = [
-    'Skiing',
-    'Snowboarding',
-    'Powder',
-    'Backcountry',
-    'Resort',
-    'Gear Review',
-    'Tips & Tricks',
-    'Adventure'
-  ];
 
   return (
     <>
@@ -416,66 +615,127 @@ Return ONLY a JSON object in this exact format:
               </div>
             </div>
 
-            {/* Tag and Location Row */}
+            {/* Category and Location Row */}
             <div className="form-row">
-              <div className="form-field">
-                <label htmlFor="tag" className="field-label">
+              <div className="form-field categories-field">
+                <label htmlFor="category-input" className="field-label">
                   <Tag size={16} />
-                  Category
+                  Categories
                 </label>
-                <input
-                  type="text"
-                  id="tag"
-                  name="tag"
-                  value={formData.tag}
-                  onChange={handleChange}
-                  placeholder="Select category"
-                  className="field-input"
-                  disabled={isLoading || isAIGenerating}
-                />
-                <div className="popular-tags">
-                  {popularTags.map(tag => (
-                    <button
-                      key={tag}
-                      type="button"
-                      className={`tag-chip ${formData.tag === tag ? 'active' : ''}`}
-                      onClick={() => setFormData(prev => ({ ...prev, tag }))}
+
+                <div className="category-input-wrapper">
+                  <div className="category-input-field">
+                    {formData.categories.map(category => (
+                      <span key={category} className="selected-category-chip">
+                        {category}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${category}`}
+                          onClick={() => removeCategoryFromSelection(category)}
+                          disabled={isLoading || isAIGenerating}
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      type="text"
+                      id="category-input"
+                      value={categoryInput}
+                      onChange={handleCategoryInputChange}
+                      onKeyDown={handleCategoryInputKeyDown}
+                      placeholder={formData.categories.length ? 'Add another category' : 'Type a category'}
+                      className="category-chip-input"
                       disabled={isLoading || isAIGenerating}
-                    >
-                      {tag}
-                    </button>
-                  ))}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="category-add-btn"
+                    onClick={handleAddCategory}
+                    disabled={isLoading || isAIGenerating || !categoryInput.trim()}
+                  >
+                    Add
+                  </button>
                 </div>
+                {isLoadingCategories && (
+                  <div className="category-loading">
+                    <Loader size={16} className="spinning" />
+                    <span>Loading categories...</span>
+                  </div>
+                )}
+
+                {availableCategories.length > 0 && (
+                  <div className="available-categories">
+                    <div className="available-categories-label">Quick add</div>
+                    <div className="category-chip-group">
+                      {availableCategories.map(category => {
+                        const isSelected = formData.categories.some(cat => isCategoryEqual(cat, category));
+                        return (
+                          <button
+                            key={category}
+                            type="button"
+                            className={`tag-chip ${isSelected ? 'selected' : ''}`}
+                            onClick={() => handleCategoryToggle(category)}
+                            disabled={isLoading || isAIGenerating}
+                          >
+                            {category}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="form-field">
+              <div className="form-field location-field">
                 <label htmlFor="location" className="field-label">
                   <MapPin size={16} />
                   Location
                 </label>
-                {isGoogleLoaded ? (
-                  <gmpx-api-loader key={import.meta.env.VITE_GOOGLE_MAPS_API_KEY} solution-channel="GMP_GE_snowhub_v1">
-                    <gmpx-place-picker
-                      ref={placePickerRef}
-                      placeholder="Enter location"
-                      style={{
-                        width: '100%',
-                        '--gmpx-color-primary': '#1976d2',
-                      }}
-                    />
-                  </gmpx-api-loader>
-                ) : (
+                <div className="location-autocomplete-wrapper">
                   <input
                     type="text"
                     id="location"
                     name="location"
                     value={formData.location}
                     onChange={handleChange}
-                    placeholder="Add location"
+                    placeholder="Search for a location..."
                     className="field-input"
                     disabled={isLoading || isAIGenerating}
+                    autoComplete="off"
                   />
-                )}
+                  {isLoadingLocations && (
+                    <div className="location-loading">
+                      <Loader size={16} className="spinning" />
+                    </div>
+                  )}
+                  
+                  {showLocationDropdown && locationSuggestions.length > 0 && (
+                    <div className="location-dropdown">
+                      {locationSuggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="location-suggestion-item"
+                          onClick={() => handleLocationSelect(suggestion)}
+                        >
+                          <MapPin size={16} className="location-icon" />
+                          <div className="location-text">
+                            <div className="location-main">
+                              {suggestion.placePrediction?.structuredFormat?.mainText?.text || 
+                               suggestion.placePrediction?.text?.text}
+                            </div>
+                            {suggestion.placePrediction?.structuredFormat?.secondaryText?.text && (
+                              <div className="location-secondary">
+                                {suggestion.placePrediction.structuredFormat.secondaryText.text}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

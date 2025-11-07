@@ -154,6 +154,19 @@ export const postsAPI = {
     return handleResponse(response);
   },
 
+  // POST /:id/bookmark - Bookmark/unbookmark post (protected)
+  toggleBookmark: async (userId, postId) => {
+    if (!userId) {
+      throw new Error('User ID is required to bookmark posts');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/users/${userId}/bookmark/${postId}`, {
+      method: 'POST',
+      headers: createHeaders(true),
+    });
+    return handleResponse(response);
+  },
+
   // GET /:id/comments - Get post comments
   getComments: async (postId) => {
     const response = await fetch(`${API_BASE_URL}/api/posts/${postId}/comments`, {
@@ -169,6 +182,31 @@ export const postsAPI = {
       method: 'POST',
       headers: createHeaders(true),
       body: JSON.stringify(commentData),
+    });
+    return handleResponse(response);
+  },
+};
+
+// ============================================
+// CATEGORIES ENDPOINTS (/api/categories)
+// ============================================
+
+export const categoriesAPI = {
+  // GET / - Retrieve all categories
+  getAll: async () => {
+    const response = await fetch(`${API_BASE_URL}/api/categories`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  // POST / - Create a new category (protected)
+  create: async (categoryData) => {
+    const response = await fetch(`${API_BASE_URL}/api/categories`, {
+      method: 'POST',
+      headers: createHeaders(true),
+      body: JSON.stringify(categoryData),
     });
     return handleResponse(response);
   },
@@ -286,6 +324,7 @@ export default {
   posts: postsAPI,
   users: usersAPI,
   comments: commentsAPI,
+  categories: categoriesAPI,
   utility: utilityAPI,
 };
 

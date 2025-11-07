@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, PlusSquare, MessageCircle, User, Snowflake, LogOut, Heart } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
-import './Navbar.css';
+import '../css/Navbar.css';
 
 function Navbar() {
   const navigate = useNavigate();
